@@ -84,16 +84,32 @@ function initializeSystem() {
     // Primeiro, sempre popular o dropdown
     populateOSCTypes();
     
-    // Verificar se OSC já foi configurada (removido temporariamente para demonstração)
-    // const savedOSC = localStorage.getItem('oscDados');
-    // if (savedOSC) {
-    //     appState.dadosOSC = JSON.parse(savedOSC);
-    //     appState.oscConfigurada = true;
-    //     showMainInterface();
-    // } else {
-        showSetupModal();
-    // }
-    
+    // Verificar se já existe uma OSC configurada no localStorage
+    const savedOSC = localStorage.getItem('oscDados');
+    if (savedOSC) {
+        appState.dadosOSC = JSON.parse(savedOSC);
+        appState.oscConfigurada = true;
+        // Carrega interface principal com dados salvos
+        showMainInterface();
+    } else {
+        // Em modo demonstração, criamos automaticamente uma OSC padrão e pulamos a tela de configuração
+        const demoOSC = {
+            nome: 'OSC Demonstração',
+            cnpj: '00.000.000/0000-00',
+            tipo: sistemaDados.tiposOSC[0] ? sistemaDados.tiposOSC[0].id : '',
+            responsavel: 'Responsável Demo',
+            email: 'demo@osc.org'
+        };
+        appState.dadosOSC = demoOSC;
+        appState.oscConfigurada = true;
+        // Salvar em localStorage para que a sessão persista
+        localStorage.setItem('oscDados', JSON.stringify(demoOSC));
+        console.log('Configurando OSC em modo demonstração:', demoOSC);
+        // Mostrar interface principal diretamente
+        showMainInterface();
+    }
+
+    // Registrar eventos após mostrar a interface
     setupEventListeners();
 }
 
