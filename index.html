@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
@@ -282,8 +283,24 @@
                         <p>Novos Beneficiários</p>
                     </div>
                 </div>
-
-                <div class="beneficiarios-list" id="beneficiariosList"></div>
+                <!-- Lista de Beneficiários -->
+                <div class="beneficiarios-list">
+                    <h3>Beneficiários Cadastrados</h3>
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Nome</th>
+                                <th>CPF</th>
+                                <th>Projeto</th>
+                                <th>Data Cadastro</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="beneficiariosTableBody">
+                            <!-- Linhas de beneficiários serão inseridas dinamicamente -->
+                        </tbody>
+                    </table>
+                </div>
             </div>
 
             <!-- Indicadores Module -->
@@ -405,6 +422,95 @@
                 <div class="modal-actions">
                     <button type="button" class="btn btn--outline" onclick="hideModal('novoBeneficiarioModal')">Cancelar</button>
                     <button type="submit" class="btn btn--primary">Cadastrar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Editar Projeto -->
+    <!-- Modal reutilizado para edição de projetos existentes. Os campos são pré-preenchidos
+         quando o usuário clica em "Editar" em algum cartão de projeto. A identificação do
+         projeto em edição é armazenada em um atributo data-id no formulário. -->
+    <div id="editProjetoModal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Editar Projeto</h3>
+                <button class="modal-close" onclick="hideModal('editProjetoModal')">×</button>
+            </div>
+            <form id="editProjetoForm">
+                <div class="form-group">
+                    <label class="form-label">Nome do Projeto</label>
+                    <input type="text" class="form-control" name="nome" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Tipo de Parceria</label>
+                    <select class="form-control" name="tipo" required>
+                        <option value="colaboracao">Termo de Colaboração</option>
+                        <option value="fomento">Termo de Fomento</option>
+                        <option value="cooperacao">Acordo de Cooperação</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Status</label>
+                    <select class="form-control" name="status" required>
+                        <option value="Planejamento">Planejamento</option>
+                        <option value="Em Andamento">Em Andamento</option>
+                        <option value="Concluído">Concluído</option>
+                        <option value="Cancelado">Cancelado</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Orçamento Total</label>
+                    <input type="number" class="form-control" name="orcamento_total" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Orçamento Executado</label>
+                    <input type="number" class="form-control" name="orcamento_executado" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Meta de Beneficiários</label>
+                    <input type="number" class="form-control" name="beneficiarios_meta" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Beneficiários Atuais</label>
+                    <input type="number" class="form-control" name="beneficiarios_atual" required>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn--outline" onclick="hideModal('editProjetoModal')">Cancelar</button>
+                    <button type="submit" class="btn btn--primary">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Editar Beneficiário -->
+    <!-- Modal para edição de dados de um beneficiário. Similar ao modal de criação, mas
+         pré-preenche os campos e permite alterar o projeto vinculado. O ID em edição
+         é mantido no atributo data-id do formulário. -->
+    <div id="editBeneficiarioModal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Editar Beneficiário</h3>
+                <button class="modal-close" onclick="hideModal('editBeneficiarioModal')">×</button>
+            </div>
+            <form id="editBeneficiarioForm">
+                <div class="form-group">
+                    <label class="form-label">Nome Completo</label>
+                    <input type="text" class="form-control" name="nome" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">CPF</label>
+                    <input type="text" class="form-control" name="cpf" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Projeto Vinculado</label>
+                    <select class="form-control" name="projeto" required>
+                        <!-- opções preenchidas dinamicamente -->
+                    </select>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn--outline" onclick="hideModal('editBeneficiarioModal')">Cancelar</button>
+                    <button type="submit" class="btn btn--primary">Salvar</button>
                 </div>
             </form>
         </div>
