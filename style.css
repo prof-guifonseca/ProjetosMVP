@@ -2,8 +2,9 @@
   /* Primitive Color Tokens */
   --color-white: rgba(255, 255, 255, 1);
   --color-black: rgba(0, 0, 0, 1);
-  --color-cream-50: rgba(252, 252, 249, 1);
-  --color-cream-100: rgba(255, 255, 253, 1);
+  /* Ajuste do design para fundo mais claro conforme a landing page */
+  --color-cream-50: rgba(255, 255, 255, 1); /* branco puro */
+  --color-cream-100: rgba(255, 255, 255, 1); /* branco puro */
   --color-gray-200: rgba(245, 245, 245, 1);
   --color-gray-300: rgba(167, 169, 169, 1);
   --color-gray-400: rgba(119, 124, 124, 1);
@@ -14,10 +15,11 @@
   --color-slate-900: rgba(19, 52, 59, 1);
   --color-teal-300: rgba(50, 184, 198, 1);
   --color-teal-400: rgba(45, 166, 178, 1);
-  --color-teal-500: rgba(33, 128, 141, 1);
-  --color-teal-600: rgba(29, 116, 128, 1);
-  --color-teal-700: rgba(26, 104, 115, 1);
-  --color-teal-800: rgba(41, 150, 161, 1);
+  /* Cores principais suavizadas para uma paleta mais leve */
+  --color-teal-500: rgba(31, 184, 205, 1); /* tom de turquesa mais claro */
+  --color-teal-600: rgba(27, 165, 184, 1);
+  --color-teal-700: rgba(24, 147, 163, 1);
+  --color-teal-800: rgba(21, 129, 144, 1);
   --color-red-400: rgba(255, 84, 89, 1);
   --color-red-500: rgba(192, 21, 47, 1);
   --color-orange-400: rgba(230, 129, 97, 1);
