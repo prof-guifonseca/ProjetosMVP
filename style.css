@@ -146,57 +146,6 @@
   --container-xl: 1280px;
 }
 
-/* -------------------------------------------------------------------
-   Custom properties for NCS branding (Connect3 palette)
-   These variables mirror the colour scheme used on the Connect3 landing
-   page so that the OSC system shares the same visual identity.  The
-   gradient values and neutrals defined here are referenced later to
-   override the default Perplexity design system tokens.  See
-   https://connect3mvp.netlify.app/style.css for the original definitions. */
-:root {
-  --ncs-green: #2E7D32;
-  --ncs-blue: #1976D2;
-  --ncs-yellow: #FFC107;
-  --ncs-light-green: #4CAF50;
-  --ncs-dark-green: #1B5E20;
-  --ncs-neutral: #F5F5F5;
-  --ncs-text: #333333;
-  --ncs-white: #FFFFFF;
-  --ncs-gray: #666666;
-  --ncs-light-gray: #F8F9FA;
-  --ncs-gradient: linear-gradient(135deg, var(--ncs-green) 0%, var(--ncs-blue) 100%);
-  --ncs-gradient-light: linear-gradient(135deg, rgba(46, 125, 50, 0.1) 0%, rgba(25, 118, 210, 0.1) 100%);
-}
-
-/* -------------------------------------------------------------------
-   Override semantic colours in light mode to adopt Connect3 palette
-   The OSC system uses CSS custom properties for semantic colours (e.g.
-   --color-background, --color-surface, --color-text).  Here we
-   override those variables for the root and explicit light-mode
-   selector to align backgrounds, text colours and primary accents with
-   the Connect3 design.  In dark mode the original values remain
-   untouched.
-*/
-:root,
-[data-color-scheme="light"] {
-  /* Set the page background to white and surfaces to a pale neutral */
-  --color-background: var(--ncs-white);
-  --color-surface: var(--ncs-neutral);
-  /* Use dark grey for primary text and mid grey for secondary text */
-  --color-text: var(--ncs-text);
-  --color-text-secondary: var(--ncs-gray);
-  /* Primary colours now map to our NCS green palette */
-  --color-primary: var(--ncs-green);
-  --color-primary-hover: var(--ncs-dark-green);
-  --color-primary-active: var(--ncs-dark-green);
-  /* Secondary colours retain the brown base but could be tuned later */
-  --color-secondary: rgba(var(--color-brown-600-rgb), 0.12);
-  --color-secondary-hover: rgba(var(--color-brown-600-rgb), 0.2);
-  --color-secondary-active: rgba(var(--color-brown-600-rgb), 0.25);
-  /* Primary button text should contrast against gradient backgrounds */
-  --color-btn-primary-text: var(--ncs-white);
-}
-
 /* Dark mode colors */
 @media (prefers-color-scheme: dark) {
   :root {
@@ -323,22 +272,23 @@
   --color-slate-900-rgb: 19, 52, 59;
   
   /* Semantic Color Tokens (Light Mode) */
-  --color-background: var(--color-cream-50);
-  --color-surface: var(--color-cream-100);
-  --color-text: var(--color-slate-900);
-  --color-text-secondary: var(--color-slate-500);
-  --color-primary: var(--color-teal-500);
-  --color-primary-hover: var(--color-teal-600);
-  --color-primary-active: var(--color-teal-700);
+  /* Apply NCS palette for light mode */
+  --color-background: var(--ncs-white);
+  --color-surface: var(--ncs-neutral);
+  --color-text: var(--ncs-text);
+  --color-text-secondary: var(--ncs-gray);
+  --color-primary: var(--ncs-green);
+  --color-primary-hover: var(--ncs-dark-green);
+  --color-primary-active: var(--ncs-dark-green);
   --color-secondary: rgba(var(--color-brown-600-rgb), 0.12);
   --color-secondary-hover: rgba(var(--color-brown-600-rgb), 0.2);
   --color-secondary-active: rgba(var(--color-brown-600-rgb), 0.25);
   --color-border: rgba(var(--color-brown-600-rgb), 0.2);
-  --color-btn-primary-text: var(--color-cream-50);
+  --color-btn-primary-text: var(--ncs-white);
   --color-card-border: rgba(var(--color-brown-600-rgb), 0.12);
   --color-card-border-inner: rgba(var(--color-brown-600-rgb), 0.12);
   --color-error: var(--color-red-500);
-  --color-success: var(--color-teal-500);
+  --color-success: var(--ncs-green);
   --color-warning: var(--color-orange-500);
   --color-info: var(--color-slate-500);
   --color-focus-ring: rgba(var(--color-teal-500-rgb), 0.4);
@@ -465,24 +415,17 @@ pre code {
   box-shadow: var(--focus-ring);
 }
 
-/*
- * Primary buttons now use the NCS gradient rather than a flat colour.
- * Hover and active states keep the same gradient to maintain a
- * consistent look; elevation effects can be applied via transforms
- * if desired.  Text colour draws from the configured contrast
- * variable defined earlier.
- */
 .btn--primary {
-  background: var(--ncs-gradient);
+  background: var(--color-primary);
   color: var(--color-btn-primary-text);
 }
 
 .btn--primary:hover {
-  background: var(--ncs-gradient);
+  background: var(--color-primary-hover);
 }
 
 .btn--primary:active {
-  background: var(--ncs-gradient);
+  background: var(--color-primary-active);
 }
 
 .btn--secondary {
@@ -499,17 +442,13 @@ pre code {
 }
 
 .btn--outline {
-  /* Outline buttons adopt the NCS green as their border and text,
-     echoing the primary accent colour.  A transparent background
-     keeps them light against the neutral surfaces. */
   background: transparent;
-  border: 1px solid var(--ncs-green);
-  color: var(--ncs-green);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
 }
 
 .btn--outline:hover {
-  /* Lighten the outline button on hover using the gradient light */
-  background: var(--ncs-gradient-light);
+  background: var(--color-secondary);
 }
 
 .btn--sm {
@@ -883,28 +822,16 @@ select.form-control {
 }
 
 .logo {
-    /*
-     * Adapt the header logo to match the Connect3 landing page.
-     * The logo container now carries the NCS gradient as its
-     * background and uses white text to provide sufficient contrast.
-     * A small amount of padding and a rounded radius help it stand
-     * apart from the rest of the header.
-     */
     display: flex;
     align-items: center;
     gap: var(--space-12);
-    padding: var(--space-8) var(--space-12);
-    background: var(--ncs-gradient);
-    border-radius: var(--radius-lg);
     font-weight: var(--font-weight-bold);
-    color: var(--ncs-white);
+    color: var(--color-primary);
     font-size: var(--font-size-lg);
 }
 
 .logo i {
-    /* Tint the icon yellow to echo the accent colour in the Connect3 brand */
     font-size: var(--font-size-xl);
-    color: var(--ncs-yellow);
 }
 
 .header-actions {
@@ -963,9 +890,8 @@ select.form-control {
 
 .nav-link:hover,
 .nav-link.active {
-    /* Highlight active and hovered menu items with a light version of the NCS gradient */
-    background: var(--ncs-gradient-light);
-    color: var(--ncs-green);
+    background: var(--color-bg-1);
+    color: var(--color-primary);
 }
 
 .nav-link i {
