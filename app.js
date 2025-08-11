@@ -1,1007 +1,651 @@
-// Improved Gestão OSC MVP script
-// Este script centraliza toda a lógica de interface do MVP de gestão.
-// Ele remove duplicações, adiciona manipulação dinâmica de dados e mantém
-// uma versão simplificada para demonstração sem necessidade de login.
 
-// Dados estáticos do sistema utilizados para referência de categorias, tipos e cores.
+// Connect3 - Gestão de Projetos (SPA leve, sem backend)
+// Mantém o visual claro alinhado à landing e adiciona: filtros, ordenação,
+// grid/kanban, drag & drop, detalhes do projeto, exportação CSV, import JSON
+// e persistência em localStorage.
+
+const SKEY = "connect3_app_state_v2";
+
+// Dados de referência
 const sistemaDados = {
-    tiposOSC: [
-        { id: "saude", nome: "Saúde", cor: "#e74c3c" },
-        { id: "educacao", nome: "Educação", cor: "#3498db" },
-        { id: "assistencia", nome: "Assistência Social", cor: "#2ecc71" },
-        { id: "cultura", nome: "Cultura", cor: "#9b59b6" },
-        { id: "meio_ambiente", nome: "Meio Ambiente", cor: "#27ae60" },
-        { id: "esporte", nome: "Esporte", cor: "#f39c12" }
-    ],
-    tiposParceria: [
-        { id: "colaboracao", nome: "Termo de Colaboração", descricao: "Parceria com transferência de recursos onde a iniciativa é do poder público" },
-        { id: "fomento", nome: "Termo de Fomento", descricao: "Parceria com transferência de recursos onde a iniciativa é da OSC" },
-        { id: "cooperacao", nome: "Acordo de Cooperação", descricao: "Parceria sem transferência de recursos financeiros" }
-    ],
-    categorias: [
-        { nome: "Recursos Humanos", percentual: 40, orcado: 60000, executado: 35000 },
-        { nome: "Materiais e Insumos", percentual: 20, orcado: 30000, executado: 18000 },
-        { nome: "Equipamentos", percentual: 15, orcado: 22500, executado: 8500 },
-        { nome: "Infraestrutura", percentual: 10, orcado: 15000, executado: 12000 },
-        { nome: "Capacitação", percentual: 8, orcado: 12000, executado: 7500 },
-        { nome: "Outras Despesas", percentual: 7, orcado: 10500, executado: 8000 }
-    ]
+  tiposParceria: [
+    { id: "colaboracao", nome: "Termo de Colaboração" },
+    { id: "fomento", nome: "Termo de Fomento" },
+    { id: "cooperacao", nome: "Acordo de Cooperação" },
+  ],
+  categorias: [
+    { nome: "Recursos Humanos", orcado: 60000, executado: 35000 },
+    { nome: "Materiais e Insumos", orcado: 30000, executado: 18000 },
+    { nome: "Equipamentos", orcado: 22500, executado: 8500 },
+    { nome: "Infraestrutura", orcado: 15000, executado: 12000 },
+    { nome: "Capacitação", orcado: 12000, executado: 7500 },
+    { nome: "Outras Despesas", orcado: 10500, executado: 8000 },
+  ],
 };
 
-// Estado global da aplicação. Aqui definimos todos os dados que serão
-// manipulados pela interface. Novos registros são adicionados a estas estruturas.
-let appState = {
-    oscConfigurada: false,
-    dadosOSC: null,
-    projetos: [
-        {
-            id: 1,
-            nome: "Apoio às Famílias Vulneráveis",
-            tipo_parceria: "colaboracao",
-            status: "Em Andamento",
-            orcamento_total: 150000,
-            orcamento_executado: 89000,
-            beneficiarios_meta: 200,
-            beneficiarios_atual: 156,
-            inicio: "2025-01-15",
-            fim: "2025-12-15",
-            progresso: 65
-        },
-        {
-            id: 2,
-            nome: "Programa de Capacitação Profissional",
-            tipo_parceria: "fomento",
-            status: "Planejamento",
-            orcamento_total: 85000,
-            orcamento_executado: 0,
-            beneficiarios_meta: 80,
-            beneficiarios_atual: 0,
-            inicio: "2025-03-01",
-            fim: "2025-11-30",
-            progresso: 15
-        }
-    ],
-    // Próximas atividades na agenda
-    atividades: [
-        { nome: "Prestação de Contas - Projeto Famílias", data: "2025-08-15", tipo: "prestacao_contas" },
-        { nome: "Reunião de Monitoramento", data: "2025-08-02", tipo: "monitoramento" },
-        { nome: "Capacitação de Voluntários", data: "2025-08-10", tipo: "capacitacao" }
-    ],
-    // Indicadores de desempenho
-    indicadores: [
-        { nome: "Famílias Atendidas", atual: 156, meta: 200, unidade: "famílias" },
-        { nome: "Atendimentos Realizados", atual: 489, meta: 600, unidade: "atendimentos" },
-        { nome: "Taxa de Satisfação", atual: 4.2, meta: 4.5, unidade: "estrelas" }
-    ],
-    // Beneficiários cadastrados
-    beneficiarios: [
-        { id: 1, nome: "Maria das Graças Silva", cpf: "123.456.789-00", projeto: "Apoio às Famílias Vulneráveis", cadastro: "2025-02-15" },
-        { id: 2, nome: "João Santos Oliveira", cpf: "987.654.321-00", projeto: "Apoio às Famílias Vulneráveis", cadastro: "2025-03-10" },
-        { id: 3, nome: "Ana Paula Costa", cpf: "456.789.123-00", projeto: "Apoio às Famílias Vulneráveis", cadastro: "2025-04-05" }
-    ],
-    // Parcerias celebradas (inicialmente estáticas, mas adicionadas dinamicamente)
-    parcerias: [
-        {
-            id: 1,
-            orgao: "Secretaria Municipal de Assistência Social",
-            tipo: "colaboracao",
-            objeto: "Atendimento a famílias em situação de vulnerabilidade social",
-            status: "Ativo"
-        },
-        {
-            id: 2,
-            orgao: "Secretaria Estadual de Desenvolvimento Social",
-            tipo: "fomento",
-            objeto: "Programa de capacitação profissional para jovens",
-            status: "Em análise"
-        }
-    ],
-    // Cronograma de relatórios de prestação de contas
-    reports: [
-        {
-            data: "2025-08-15",
-            titulo: "Prestação de Contas - Projeto Famílias",
-            descricao: "Relatório trimestral de execução física e financeira"
-        },
-        {
-            data: "2025-09-30",
-            titulo: "Relatório de Indicadores",
-            descricao: "Monitoramento de metas e resultados alcançados"
-        },
-        {
-            data: "2025-10-15",
-            titulo: "Prestação de Contas - Capacitação",
-            descricao: "Relatório de atividades do programa de capacitação"
-        }
-    ]
+// Estado
+let appState = loadState() || {
+  projetos: [
+    {
+      id: 1,
+      nome: "Apoio às Famílias Vulneráveis",
+      tipo_parceria: "colaboracao",
+      status: "Em Andamento",
+      orcamento_total: 150000,
+      orcamento_executado: 89000,
+      beneficiarios_meta: 200,
+      beneficiarios_atual: 156,
+      inicio: "2025-01-15",
+      fim: "2025-12-15",
+      progresso: 65,
+    },
+    {
+      id: 2,
+      nome: "Programa de Capacitação Profissional",
+      tipo_parceria: "fomento",
+      status: "Planejamento",
+      orcamento_total: 85000,
+      orcamento_executado: 0,
+      beneficiarios_meta: 80,
+      beneficiarios_atual: 0,
+      inicio: "2025-03-01",
+      fim: "2025-11-30",
+      progresso: 15,
+    },
+  ],
+  atividades: [
+    { nome: "Prestação de Contas - Projeto Famílias", data: "2025-08-15", tipo: "prestacao_contas" },
+    { nome: "Reunião de Monitoramento", data: "2025-08-20", tipo: "monitoramento" },
+    { nome: "Capacitação de Voluntários", data: "2025-09-10", tipo: "capacitacao" },
+  ],
+  indicadores: [
+    { nome: "Famílias Atendidas", atual: 156, meta: 200, unidade: "famílias" },
+    { nome: "Atendimentos Realizados", atual: 489, meta: 600, unidade: "atendimentos" },
+    { nome: "Taxa de Satisfação", atual: 4.2, meta: 4.5, unidade: "estrelas" },
+  ],
+  beneficiarios: [
+    { id: 1, nome: "Maria das Graças Silva", cpf: "123.456.789-00", projeto: "Apoio às Famílias Vulneráveis", cadastro: "2025-02-15" },
+    { id: 2, nome: "João Santos Oliveira", cpf: "987.654.321-00", projeto: "Apoio às Famílias Vulneráveis", cadastro: "2025-03-10" },
+    { id: 3, nome: "Ana Paula Costa", cpf: "456.789.123-00", projeto: "Apoio às Famílias Vulneráveis", cadastro: "2025-04-05" },
+  ],
+  parcerias: [
+    { id: 1, orgao: "Secretaria Municipal de Assistência Social", tipo: "colaboracao", objeto: "Atendimento a famílias em situação de vulnerabilidade social", status: "Ativo" },
+    { id: 2, orgao: "Secretaria Estadual de Desenvolvimento Social", tipo: "fomento", objeto: "Programa de capacitação profissional para jovens", status: "Em análise" },
+  ],
+  reports: [
+    { data: "2025-08-15", titulo: "Prestação de Contas - Projeto Famílias", descricao: "Relatório trimestral de execução física e financeira" },
+    { data: "2025-09-30", titulo: "Relatório de Indicadores", descricao: "Monitoramento de metas e resultados alcançados" },
+    { data: "2025-10-15", titulo: "Prestação de Contas - Capacitação", descricao: "Relatório de atividades do programa de capacitação" },
+  ],
 };
 
-// Armazenaremos instâncias dos gráficos do Chart.js para que possam ser
-// destruidos e recriados quando necessário (ex. ao atualizar dados).
+// Helpers
+function saveState() {
+  localStorage.setItem(SKEY, JSON.stringify(appState));
+  toast("Dados salvos.");
+}
+function loadState() {
+  try { return JSON.parse(localStorage.getItem(SKEY)); } catch { return null; }
+}
+function currency(v){return new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(v||0)}
+function formatDate(d){return new Date(d).toLocaleDateString('pt-BR')}
+function byId(id){return document.getElementById(id)}
+
+// Init
+document.addEventListener('DOMContentLoaded', () => {
+  // Navegação superior
+  document.querySelectorAll('.topnav__link').forEach(btn => {
+    btn.addEventListener('click', () => switchModule(btn.dataset.module, btn));
+  });
+
+  // Ações
+  byId('btnSalvarEstado').addEventListener('click', saveState);
+  byId('btnImportar').addEventListener('click', () => byId('importJson').click());
+  byId('importJson').addEventListener('change', importJson);
+  byId('btnNovoProjeto').addEventListener('click', () => showDialog('novoProjetoModal'));
+  byId('btnNovaParceria').addEventListener('click', () => showDialog('novaParceriaModal'));
+  byId('btnNovoBeneficiario').addEventListener('click', () => showDialog('novoBeneficiarioModal'));
+  byId('btnGerarRelatorio').addEventListener('click', () => alert('Relatório gerado com sucesso (fictício).'));
+  byId('btnExportarCsv').addEventListener('click', exportCsv);
+
+  // View toggles
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => switchProjectsView(btn.dataset.view, btn));
+  });
+
+  // Filtros e buscas de projetos
+  ['buscaProjeto','filtroStatus','filtroTipo','ordenacao'].forEach(id => {
+    const el = byId(id);
+    el && el.addEventListener('input', renderProjects);
+  });
+
+  byId('buscaBenef').addEventListener('input', renderBeneficiarios);
+
+  // Forms
+  byId('novoProjetoForm').addEventListener('submit', handleNewProject);
+  byId('editProjetoForm').addEventListener('submit', handleEditProjeto);
+  byId('novaParceriaForm').addEventListener('submit', handleNewParceria);
+  byId('novoBeneficiarioForm').addEventListener('submit', handleNewBeneficiario);
+  byId('editBeneficiarioForm').addEventListener('submit', handleEditBeneficiario);
+
+  // Theme
+  byId('btnTheme').addEventListener('click', toggleTheme);
+
+  // Primeira renderização
+  updateDashboard();
+  renderProjects();
+  renderParceriasList();
+  renderBudgetData();
+  renderBeneficiarios();
+  renderIndicators();
+  renderReportsTimeline();
+  fillBeneficiarioProjetoSelects();
+});
+
+function toggleTheme(){
+  const body = document.body;
+  const isLight = body.getAttribute('data-color-scheme') === 'light';
+  body.setAttribute('data-color-scheme', isLight ? 'dark' : 'light');
+  const icon = byId('btnTheme').querySelector('i');
+  icon.className = isLight ? 'fa-solid fa-moon' : 'fa-solid fa-sun';
+}
+
+/* Navegação */
+function switchModule(moduleId, btn){
+  document.querySelectorAll('.module').forEach(m => m.classList.remove('is-active'));
+  byId(`${moduleId}-module`).classList.add('is-active');
+  document.querySelectorAll('.topnav__link').forEach(b => b.classList.remove('is-active'));
+  btn.classList.add('is-active');
+
+  // Atualizações específicas
+  if (moduleId === 'dashboard') updateDashboard();
+  if (moduleId === 'projetos') renderProjects();
+}
+
+/* Dashboard */
 let charts = {};
+function updateDashboard(){
+  byId('totalProjetos').textContent = appState.projetos.length;
+  const orcTotal = appState.projetos.reduce((s,p)=>s+(p.orcamento_total||0),0);
+  byId('orcamentoTotal').textContent = currency(orcTotal);
+  const benefTotal = appState.projetos.reduce((s,p)=>s+(p.beneficiarios_atual||0),0);
+  byId('beneficiariosTotal').textContent = benefTotal;
+  const progMedio = appState.projetos.length ? Math.round(appState.projetos.reduce((s,p)=>s+(p.progresso||0),0)/appState.projetos.length) : 0;
+  byId('progressoMedio').textContent = progMedio + '%';
 
-// Inicializa a aplicação após o carregamento do DOM.
-document.addEventListener('DOMContentLoaded', initializeSystem);
-
-/**
- * Função principal que inicializa o sistema.
- * - Popula dropdown de tipos de OSC.
- * - Verifica se há dados salvos no localStorage para definir uma OSC.
- * - Caso contrário, utiliza dados de demonstração.
- * - Registra os eventos da interface.
- */
-function initializeSystem() {
-    populateOSCTypes();
-    const savedOSC = localStorage.getItem('oscDados');
-    if (savedOSC) {
-        try {
-            appState.dadosOSC = JSON.parse(savedOSC);
-            appState.oscConfigurada = true;
-            showMainInterface();
-        } catch (e) {
-            console.warn('Erro ao recuperar OSC do localStorage, usando demonstração.', e);
-            configurarDemoOSC();
-        }
-    } else {
-        configurarDemoOSC();
-    }
-    setupEventListeners();
+  renderDashboardCharts();
+  renderProximasAtividades();
 }
 
-/**
- * Cria uma OSC de demonstração e salva no localStorage para
- * persistência mínima durante a demonstração.
- */
-function configurarDemoOSC() {
-    const demoOSC = {
-        nome: 'OSC Demonstração',
-        cnpj: '00.000.000/0000-00',
-        tipo: sistemaDados.tiposOSC[0] ? sistemaDados.tiposOSC[0].id : '',
-        responsavel: 'Responsável Demo',
-        email: 'demo@osc.org'
-    };
-    appState.dadosOSC = demoOSC;
-    appState.oscConfigurada = true;
-    localStorage.setItem('oscDados', JSON.stringify(demoOSC));
-    showMainInterface();
-}
-
-/**
- * Preenche o select de tipos de OSC na tela de configuração.
- */
-function populateOSCTypes() {
-    const select = document.getElementById('oscTipo');
-    if (!select) return;
-    // Mantém a primeira opção (Selecione uma área)
-    while (select.children.length > 1) {
-        select.removeChild(select.lastChild);
-    }
-    sistemaDados.tiposOSC.forEach(tipo => {
-        const option = document.createElement('option');
-        option.value = tipo.id;
-        option.textContent = tipo.nome;
-        select.appendChild(option);
+function renderDashboardCharts(){
+  const c1 = byId('orcamentoChart');
+  if (c1){
+    charts.orc && charts.orc.destroy();
+    charts.orc = new Chart(c1.getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: appState.projetos.map(p=>p.nome),
+        datasets: [
+          {label:'Orçado', data: appState.projetos.map(p=>p.orcamento_total), backgroundColor:'#1FB8CD'},
+          {label:'Executado', data: appState.projetos.map(p=>p.orcamento_executado), backgroundColor:'#FFC185'}
+        ]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { position:'bottom' },
+          tooltip: { callbacks: { label: (ctx)=> `${ctx.dataset.label}: ${currency(ctx.parsed.y)}` } }
+        },
+        scales: { y: { beginAtZero: true } }
+      }
     });
-}
+  }
 
-/**
- * Exibe a interface principal e atualiza todos os módulos com os dados atuais.
- */
-function showMainInterface() {
-    document.getElementById('setupModal').classList.add('hidden');
-    document.getElementById('mainInterface').classList.remove('hidden');
-    // Atualiza o cabeçalho com o nome da OSC.
-    if (appState.dadosOSC) {
-        document.getElementById('oscNameHeader').textContent = appState.dadosOSC.nome;
-    }
-    // Renderiza todos os módulos.
-    updateDashboard();
-    renderProjectsGrid();
-    renderParceriasList();
-    renderBudgetData();
-    renderBeneficiarios();
-    renderIndicators();
-    renderReportsTimeline();
-}
-
-/**
- * Registra todos os eventos da interface (navegação, formulários, modais).
- */
-function setupEventListeners() {
-    // Formulário de configuração inicial
-    const setupForm = document.getElementById('setupForm');
-    if (setupForm) {
-        setupForm.addEventListener('submit', handleSetupSubmit);
-    }
-    // Navegação lateral
-    document.querySelectorAll('.nav-link').forEach(link => {
-        link.addEventListener('click', handleNavigation);
+  const c2 = byId('beneficiariosChart');
+  if (c2){
+    charts.ben && charts.ben.destroy();
+    charts.ben = new Chart(c2.getContext('2d'), {
+      type: 'doughnut',
+      data: {
+        labels: appState.projetos.map(p=>p.nome),
+        datasets: [{ data: appState.projetos.map(p=>p.beneficiarios_atual||0) }]
+      },
+      options: { responsive: true, plugins: { legend:{position:'bottom'} } }
     });
-    // Formulário de novo projeto
-    const novoProjetoForm = document.getElementById('novoProjetoForm');
-    if (novoProjetoForm) {
-        novoProjetoForm.addEventListener('submit', handleNewProject);
-    }
-    // Formulário de nova parceria
-    const novaParceriaForm = document.getElementById('novaParceriaForm');
-    if (novaParceriaForm) {
-        novaParceriaForm.addEventListener('submit', handleNewParceria);
-    }
-    // Formulário de novo beneficiário
-    const novoBeneficiarioForm = document.getElementById('novoBeneficiarioForm');
-    if (novoBeneficiarioForm) {
-        novoBeneficiarioForm.addEventListener('submit', handleNewBeneficiario);
-    }
+  }
+}
 
-    // Formulário de edição de projeto
-    const editProjetoForm = document.getElementById('editProjetoForm');
-    if (editProjetoForm) {
-        editProjetoForm.addEventListener('submit', handleEditProjeto);
-    }
-    // Formulário de edição de beneficiário
-    const editBeneficiarioForm = document.getElementById('editBeneficiarioForm');
-    if (editBeneficiarioForm) {
-        editBeneficiarioForm.addEventListener('submit', handleEditBeneficiario);
-    }
-    // Botões de fechar modais
-    document.querySelectorAll('.modal-close').forEach(button => {
-        button.addEventListener('click', () => {
-            const modal = button.closest('.modal');
-            if (modal) modal.classList.add('hidden');
-        });
+function renderProximasAtividades(){
+  const c = byId('proximas-atividades');
+  if (!c) return;
+  c.innerHTML = '';
+  const sorted = [...appState.atividades].sort((a,b)=> new Date(a.data) - new Date(b.data));
+  sorted.forEach(a=>{
+    const el = document.createElement('div');
+    el.className = 'activity-item';
+    el.innerHTML = `<div>
+      <div class="activity-name">${a.nome}</div>
+      <div class="activity-type">${tipoAtividadeLabel(a.tipo)}</div>
+    </div>
+    <div class="activity-date">${formatDate(a.data)}</div>`;
+    c.appendChild(el);
+  })
+}
+function tipoAtividadeLabel(t){
+  return ({prestacao_contas:'Prestação de Contas',monitoramento:'Monitoramento',capacitacao:'Capacitação'})[t] || t;
+}
+
+/* Projetos */
+let currentProjectsView = 'grid';
+function switchProjectsView(view, btn){
+  currentProjectsView = view;
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('is-active'));
+  btn.classList.add('is-active');
+  byId('viewGrid').classList.toggle('hidden', view!=='grid');
+  byId('viewKanban').classList.toggle('hidden', view!=='kanban');
+  renderProjects();
+}
+
+function filteredSortedProjects(){
+  const q = byId('buscaProjeto').value.trim().toLowerCase();
+  const st = byId('filtroStatus').value;
+  const tp = byId('filtroTipo').value;
+  const ord = byId('ordenacao').value;
+
+  let items = appState.projetos.filter(p => {
+    const okQ = !q || p.nome.toLowerCase().includes(q);
+    const okS = !st || p.status === st;
+    const okT = !tp || p.tipo_parceria === tp;
+    return okQ && okS && okT;
+  });
+
+  const sorters = {
+    'nome-asc': (a,b)=> a.nome.localeCompare(b.nome),
+    'nome-desc': (a,b)=> b.nome.localeCompare(a.nome),
+    'orcamento-desc': (a,b)=> (b.orcamento_total||0)-(a.orcamento_total||0),
+    'progresso-desc': (a,b)=> (b.progresso||0)-(a.progresso||0),
+  };
+  items.sort(sorters[ord] || sorters['nome-asc']);
+  return items;
+}
+
+function renderProjects(){
+  const items = filteredSortedProjects();
+  // Grid
+  const grid = byId('viewGrid');
+  grid.innerHTML='';
+  items.forEach(p=> grid.appendChild(projectCard(p)));
+  // Kanban
+  ['planejamento','em-andamento','concluido','cancelado'].forEach(id=> byId('col-'+id).innerHTML='');
+  items.forEach(p=>{
+    const id = (p.status||'').toLowerCase().replace(' ', '-');
+    const map = { 'planejamento':'col-planejamento','em-andamento':'col-em-andamento','concluído':'col-concluido','concluido':'col-concluido','cancelado':'col-cancelado' };
+    const colId = map[id] || 'col-planejamento';
+    byId(colId).appendChild(kanbanCard(p));
+  });
+  enableDnD();
+}
+
+function projectCard(p){
+  const el = document.createElement('article');
+  el.className='project-card';
+  el.innerHTML = `
+    <div class="project-header">
+      <h3 class="project-title">${p.nome}</h3>
+      <span class="project-status ${p.status}">${p.status}</span>
+    </div>
+    <div class="project-meta">
+      <div><small>Executado</small><div class="project-metric-value">${currency(p.orcamento_executado)}</div><small>de ${currency(p.orcamento_total)}</small></div>
+      <div><small>Beneficiários</small><div class="project-metric-value">${p.beneficiarios_atual}</div><small>de ${p.beneficiarios_meta}</small></div>
+    </div>
+    <div class="progress"><div class="progress__bar" style="width:${p.progresso||0}%"></div></div>
+    <div class="project-actions">
+      <button class="btn btn--outline btn--sm" aria-label="Editar" title="Editar"><i class="fa-solid fa-pen"></i></button>
+      <button class="btn btn--primary btn--sm" aria-label="Ver detalhes" title="Ver detalhes"><i class="fa-solid fa-eye"></i></button>
+    </div>`;
+  const [btnEdit, btnView] = el.querySelectorAll('button');
+  btnEdit.addEventListener('click', ()=> openEditProject(p.id));
+  btnView.addEventListener('click', ()=> openViewProject(p.id));
+  return el;
+}
+
+function kanbanCard(p){
+  const el = document.createElement('div');
+  el.className='kanban__card';
+  el.setAttribute('draggable','true');
+  el.dataset.id = p.id;
+  el.innerHTML = `<strong>${p.nome}</strong><br><small>${p.beneficiarios_atual}/${p.beneficiarios_meta} • ${currency(p.orcamento_executado)}</small>`;
+  el.addEventListener('dblclick', ()=> openViewProject(p.id));
+  return el;
+}
+
+function enableDnD(){
+  document.querySelectorAll('.kanban__card').forEach(card=>{
+    card.addEventListener('dragstart', e=> e.dataTransfer.setData('text/plain', card.dataset.id));
+  });
+  document.querySelectorAll('.kanban__list').forEach(list=>{
+    list.addEventListener('dragover', e=> { e.preventDefault(); list.classList.add('drag-over'); });
+    list.addEventListener('dragleave', ()=> list.classList.remove('drag-over'));
+    list.addEventListener('drop', e=>{
+      e.preventDefault();
+      list.classList.remove('drag-over');
+      const id = Number(e.dataTransfer.getData('text/plain'));
+      const p = appState.projetos.find(x=>x.id===id);
+      if (!p) return;
+      const statusMap = {
+        'col-planejamento': 'Planejamento',
+        'col-em-andamento': 'Em Andamento',
+        'col-concluido': 'Concluído',
+        'col-cancelado': 'Cancelado'
+      };
+      const newStatus = statusMap[list.id];
+      p.status = newStatus;
+      if (newStatus === 'Concluído') p.progresso = 100;
+      saveState();
+      renderProjects();
+      updateDashboard();
+      toast('Status atualizado.');
     });
-    // Clique fora do modal fecha (exceto o de setup)
-    document.querySelectorAll('.modal').forEach(modal => {
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal && modal.id !== 'setupModal') {
-                modal.classList.add('hidden');
-            }
-        });
+  });
+}
+
+/* CRUD Projetos */
+function showDialog(id){ const d=byId(id); d.showModal(); return d; }
+
+function handleNewProject(e){
+  e.preventDefault();
+  const form = e.target;
+  const [nomeEl, tipoEl, orcEl, metaEl] = form.querySelectorAll('input,select');
+  const nome = nomeEl.value.trim();
+  const tipo = tipoEl.value;
+  const orc = Number(orcEl.value);
+  const meta = Number(metaEl.value);
+  if(!nome || !tipo || !orc || !meta) return;
+  appState.projetos.push({
+    id: Date.now(), nome, tipo_parceria: tipo, status:'Planejamento',
+    orcamento_total: orc, orcamento_executado: 0, beneficiarios_meta: meta, beneficiarios_atual: 0,
+    inicio: new Date().toISOString().slice(0,10), fim:'', progresso: 0
+  });
+  form.close(); form.reset();
+  saveState(); renderProjects(); updateDashboard(); fillBeneficiarioProjetoSelects();
+  toast('Projeto criado.');
+}
+
+function openEditProject(id){
+  const p = appState.projetos.find(x=>x.id===id); if(!p) return;
+  const d = showDialog('editProjetoModal');
+  d.dataset.id = id;
+  byId('editNomeProjeto').value = p.nome;
+  byId('editTipoParceria').value = p.tipo_parceria;
+  byId('editStatus').value = p.status;
+  byId('editOrcTotal').value = p.orcamento_total;
+  byId('editOrcExec').value = p.orcamento_executado;
+  byId('editMetaBenef').value = p.beneficiarios_meta;
+  byId('editAtualBenef').value = p.beneficiarios_atual;
+}
+function handleEditProjeto(e){
+  e.preventDefault();
+  const d = byId('editProjetoModal');
+  const id = Number(d.dataset.id);
+  const p = appState.projetos.find(x=>x.id===id); if(!p) return;
+  p.nome = byId('editNomeProjeto').value.trim();
+  p.tipo_parceria = byId('editTipoParceria').value;
+  p.status = byId('editStatus').value;
+  p.orcamento_total = Number(byId('editOrcTotal').value);
+  p.orcamento_executado = Number(byId('editOrcExec').value);
+  p.beneficiarios_meta = Number(byId('editMetaBenef').value);
+  p.beneficiarios_atual = Number(byId('editAtualBenef').value);
+  p.progresso = p.beneficiarios_meta ? Math.min(100, Math.round((p.beneficiarios_atual/p.beneficiarios_meta)*100)) : 0;
+  d.close();
+  saveState(); renderProjects(); updateDashboard();
+  toast('Projeto atualizado.');
+}
+
+function openViewProject(id){
+  const p = appState.projetos.find(x=>x.id===id); if(!p) return;
+  byId('viewProjetoTitulo').textContent = p.nome;
+  byId('viewProjetoBody').innerHTML = `
+    <div class="grid-2">
+      <div class="card">
+        <strong>Status:</strong> <span class="badge--success">${p.status}</span><br>
+        <strong>Tipo:</strong> ${labelTipo(p.tipo_parceria)}<br>
+        <strong>Período:</strong> ${formatDate(p.inicio)} – ${p.fim ? formatDate(p.fim) : '—'}
+      </div>
+      <div class="card">
+        <strong>Orçamento:</strong> ${currency(p.orcamento_total)}<br>
+        <strong>Executado:</strong> ${currency(p.orcamento_executado)}<br>
+        <div class="progress" style="margin-top:8px"><div class="progress__bar" style="width:${p.progresso||0}%"></div></div>
+        <small>Progresso estimado: ${p.progresso||0}%</small>
+      </div>
+    </div>
+    <div class="card" style="margin-top:12px">
+      <strong>Beneficiários:</strong> ${p.beneficiarios_atual} de ${p.beneficiarios_meta}
+    </div>`;
+  showDialog('viewProjetoModal');
+}
+
+function labelTipo(id){
+  return (sistemaDados.tiposParceria.find(t=>t.id===id)||{}).nome || id;
+}
+
+/* Parcerias */
+function renderParceriasList(){
+  const list = byId('parceriasList'); list.innerHTML='';
+  appState.parcerias.forEach(x=>{
+    const div = document.createElement('div');
+    div.className='parceria-item';
+    div.innerHTML = `<div>
+      <h4>${x.orgao}</h4>
+      <div><small><strong>Tipo:</strong> ${labelTipo(x.tipo)}</small></div>
+      <div><small><strong>Objeto:</strong> ${x.objeto}</small></div>
+    </div>
+    <span class="badge--success">${x.status}</span>`;
+    list.appendChild(div);
+  });
+}
+
+/* Orçamento */
+function renderBudgetData(){
+  const c = byId('budgetChart');
+  if(c){
+    const ctx = c.getContext('2d');
+    if (charts.budget) charts.budget.destroy();
+    charts.budget = new Chart(ctx, {
+      type: 'pie',
+      data: {
+        labels: sistemaDados.categorias.map(c=>c.nome),
+        datasets: [{ data: sistemaDados.categorias.map(c=>c.orcado) }]
+      },
+      options: { responsive:true, plugins:{ legend:{ position:'right' } } }
     });
-    // Tecla ESC fecha modais (exceto setup)
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') {
-            document.querySelectorAll('.modal:not(.hidden)').forEach(modal => {
-                if (modal.id !== 'setupModal') modal.classList.add('hidden');
-            });
-        }
+  }
+  const tbody = byId('budgetTableBody'); tbody.innerHTML='';
+  sistemaDados.categorias.forEach(cat=>{
+    const tr = document.createElement('tr');
+    const pct = Math.round((cat.executado/cat.orcado)*100);
+    tr.innerHTML = `<td>${cat.nome}</td>
+      <td>${currency(cat.orcado)}</td>
+      <td>${currency(cat.executado)}</td>
+      <td>${pct}%</td>
+      <td>${pct<50?'<span class="project-status Planejamento">Atenção</span>': pct>90?'<span class="project-status Cancelado">Limite</span>':'<span class="project-status Em Andamento">No prazo</span>'}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+/* Beneficiários */
+let benefPage = 1, benefPageSize = 8;
+function renderBeneficiarios(){
+  const q = byId('buscaBenef').value.trim().toLowerCase();
+  let items = appState.beneficiarios.filter(b=> !q || b.nome.toLowerCase().includes(q) || b.cpf.includes(q) || (b.projeto||'').toLowerCase().includes(q));
+  const total = items.length;
+  const pages = Math.max(1, Math.ceil(total/benefPageSize));
+  if (benefPage>pages) benefPage = pages;
+  const start = (benefPage-1)*benefPageSize;
+  const pageItems = items.slice(start, start+benefPageSize);
+
+  const tbody = byId('beneficiariosTableBody'); tbody.innerHTML='';
+  pageItems.forEach(b=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${b.nome}</td><td>${b.cpf}</td><td>${b.projeto}</td><td>${formatDate(b.cadastro)}</td>
+    <td>
+      <button class="btn btn--outline btn--sm" title="Editar"><i class="fa-solid fa-pen"></i></button>
+    </td>`;
+    tr.querySelector('button').addEventListener('click', ()=> openEditBeneficiario(b.id));
+    tbody.appendChild(tr);
+  });
+
+  const pag = byId('benefPagination'); pag.innerHTML='';
+  for (let i=1;i<=pages;i++){
+    const btn = document.createElement('button');
+    btn.className = 'page-btn' + (i===benefPage?' is-active':'');
+    btn.textContent = i;
+    btn.addEventListener('click', ()=>{ benefPage=i; renderBeneficiarios(); });
+    pag.appendChild(btn);
+  }
+
+  byId('totalBeneficiarios').textContent = appState.beneficiarios.length;
+  byId('atendimentosMes').textContent = '47';
+  byId('novosBeneficiarios').textContent = '12';
+}
+
+function openEditBeneficiario(id){
+  const b = appState.beneficiarios.find(x=>x.id===id); if(!b) return;
+  const d = showDialog('editBeneficiarioModal');
+  d.dataset.id = id;
+  byId('editNomeBenef').value = b.nome;
+  byId('editCpfBenef').value = b.cpf;
+  const sel = byId('editProjetoBenef'); sel.innerHTML = '';
+  appState.projetos.forEach(p=>{
+    const opt = document.createElement('option'); opt.value = p.nome; opt.textContent = p.nome; sel.appendChild(opt);
+  });
+  sel.value = b.projeto;
+}
+function handleEditBeneficiario(e){
+  e.preventDefault();
+  const d = byId('editBeneficiarioModal');
+  const id = Number(d.dataset.id);
+  const b = appState.beneficiarios.find(x=>x.id===id); if(!b) return;
+  b.nome = byId('editNomeBenef').value.trim();
+  b.cpf = byId('editCpfBenef').value.trim();
+  b.projeto = byId('editProjetoBenef').value;
+  d.close(); saveState(); renderBeneficiarios(); toast('Beneficiário atualizado.');
+}
+
+function handleNewBeneficiario(e){
+  e.preventDefault();
+  const form = e.target;
+  const [nomeEl, cpfEl, projEl] = form.querySelectorAll('input,select');
+  const nome = nomeEl.value.trim();
+  const cpf = cpfEl.value.trim();
+  const projetoNome = projEl.value;
+  if(!nome || !cpf || !projetoNome) return;
+  appState.beneficiarios.push({
+    id: Date.now(), nome, cpf, projeto: projetoNome, cadastro: new Date().toISOString().slice(0,10)
+  });
+  const proj = appState.projetos.find(p=>p.nome===projetoNome);
+  if (proj){
+    proj.beneficiarios_atual = (proj.beneficiarios_atual||0)+1;
+    proj.progresso = proj.beneficiarios_meta ? Math.min(100, Math.round((proj.beneficiarios_atual/proj.beneficiarios_meta)*100)) : 0;
+  }
+  form.close(); form.reset(); saveState(); renderBeneficiarios(); renderProjects(); updateDashboard();
+  toast('Beneficiário cadastrado.');
+}
+
+function fillBeneficiarioProjetoSelects(){
+  const selects = [document.querySelector('#novoBeneficiarioModal select'), byId('editProjetoBenef')];
+  selects.forEach(sel=>{
+    if(!sel) return;
+    sel.innerHTML='';
+    appState.projetos.forEach(p=>{
+      const opt = document.createElement('option'); opt.value=p.nome; opt.textContent=p.nome; sel.appendChild(opt);
     });
+  });
 }
 
-/**
- * Trata o envio do formulário de configuração inicial da OSC.
- */
-function handleSetupSubmit(e) {
-    e.preventDefault();
-    const dadosOSC = {
-        nome: document.getElementById('oscNome').value.trim(),
-        cnpj: document.getElementById('oscCnpj').value.trim(),
-        tipo: document.getElementById('oscTipo').value,
-        responsavel: document.getElementById('oscResponsavel').value.trim(),
-        email: document.getElementById('oscEmail').value.trim()
-    };
-    // Validação simples
-    if (!dadosOSC.nome || !dadosOSC.cnpj || !dadosOSC.tipo || !dadosOSC.responsavel || !dadosOSC.email) {
-        alert('Por favor, preencha todos os campos obrigatórios.');
-        return;
-    }
-    appState.dadosOSC = dadosOSC;
-    appState.oscConfigurada = true;
-    // Salva no localStorage para persistência
-    localStorage.setItem('oscDados', JSON.stringify(dadosOSC));
-    showMainInterface();
+/* Indicadores */
+function renderIndicators(){
+  const grid = byId('indicatorsGrid'); grid.innerHTML='';
+  appState.indicadores.forEach(ind=>{
+    const prog = ind.meta ? ((ind.atual/ind.meta)*100).toFixed(1) : 0;
+    const card = document.createElement('div');
+    card.className='card';
+    card.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <h4>${ind.nome}</h4><small style="opacity:.7">${ind.unidade}</small>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin:8px 0">
+        <strong style="color:var(--color-primary)">${ind.atual}</strong>
+        <small>Meta: ${ind.meta}</small>
+      </div>
+      <div class="progress"><div class="progress__bar" style="width:${prog}%"></div></div>
+      <small>Progresso: ${prog}%</small>`;
+    grid.appendChild(card);
+  });
 }
 
-/**
- * Navega entre os módulos do menu lateral.
- */
-function handleNavigation(e) {
-    e.preventDefault();
-    const module = e.currentTarget.dataset.module;
-    // Atualiza classe active na navegação
-    document.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active'));
-    e.currentTarget.classList.add('active');
-    // Mostra módulo selecionado e oculta os demais
-    document.querySelectorAll('.module').forEach(mod => mod.classList.remove('active'));
-    const target = document.getElementById(`${module}-module`);
-    if (target) target.classList.add('active');
-    // Atualiza dados específicos quando voltar ao dashboard
-    if (module === 'dashboard') {
-        updateDashboard();
-    }
+/* Relatórios */
+function renderReportsTimeline(){
+  const cont = byId('reportsTimeline'); cont.innerHTML='';
+  [...appState.reports].sort((a,b)=> new Date(a.data)-new Date(b.data)).forEach(r=>{
+    const item = document.createElement('div');
+    item.className='activity-item';
+    item.innerHTML = `<div>
+      <div class="activity-name">${r.titulo}</div>
+      <div class="activity-type">${r.descricao}</div>
+    </div>
+    <div class="activity-date">${formatDate(r.data)}</div>`;
+    cont.appendChild(item);
+  });
 }
 
-/**
- * Atualiza os cards do dashboard e agenda de atividades.
- */
-function updateDashboard() {
-    // Atualiza contagem de projetos
-    const totalProjetosEl = document.getElementById('totalProjetos');
-    if (totalProjetosEl) totalProjetosEl.textContent = appState.projetos.length;
-    // Soma orçamentos totais
-    const orcamentoTotal = appState.projetos.reduce((acc, p) => acc + p.orcamento_total, 0);
-    const orcamentoTotalEl = document.getElementById('orcamentoTotal');
-    if (orcamentoTotalEl) orcamentoTotalEl.textContent = formatCurrency(orcamentoTotal);
-    // Soma beneficiários atendidos
-    const beneficiariosTotal = appState.projetos.reduce((acc, p) => acc + (p.beneficiarios_atual || 0), 0);
-    const beneficiariosTotalEl = document.getElementById('beneficiariosTotal');
-    if (beneficiariosTotalEl) beneficiariosTotalEl.textContent = beneficiariosTotal;
-    // Calcula progresso médio
-    const progressoMedio = appState.projetos.length > 0 ?
-        Math.round(appState.projetos.reduce((acc, p) => acc + (p.progresso || 0), 0) / appState.projetos.length)
-        : 0;
-    const progressoMedioEl = document.getElementById('progressoMedio');
-    if (progressoMedioEl) progressoMedioEl.textContent = `${progressoMedio}%`;
-    // Desenha gráficos e próximas atividades
-    renderDashboardCharts();
-    renderProximasAtividades();
+/* Parcerias form */
+function handleNewParceria(e){
+  e.preventDefault();
+  const form = e.target;
+  const [orgaoEl, tipoEl, objEl] = form.querySelectorAll('input,select,textarea');
+  const orgao = orgaoEl.value.trim();
+  const tipo = tipoEl.value;
+  const objeto = objEl.value.trim();
+  if(!orgao || !tipo || !objeto) return;
+  appState.parcerias.push({ id: Date.now(), orgao, tipo, objeto, status: 'Em análise' });
+  form.close(); form.reset(); saveState(); renderParceriasList();
+  toast('Parceria criada.');
 }
 
-/**
- * Renderiza os gráficos do dashboard utilizando Chart.js.
- */
-function renderDashboardCharts() {
-    // Execução orçamentária por projeto (gráfico de barras)
-    const orcamentoCanvas = document.getElementById('orcamentoChart');
-    if (orcamentoCanvas) {
-        const ctx = orcamentoCanvas.getContext('2d');
-        if (charts.orcamento) {
-            charts.orcamento.destroy();
-        }
-        charts.orcamento = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: appState.projetos.map(p => p.nome),
-                datasets: [
-                    {
-                        label: 'Orçado',
-                        data: appState.projetos.map(p => p.orcamento_total),
-                        backgroundColor: '#1FB8CD'
-                    },
-                    {
-                        label: 'Executado',
-                        data: appState.projetos.map(p => p.orcamento_executado),
-                        backgroundColor: '#FFC185'
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        ticks: {
-                            callback: value => 'R$ ' + value.toLocaleString('pt-BR')
-                        }
-                    }
-                },
-                plugins: {
-                    tooltip: {
-                        callbacks: {
-                            label: context => {
-                                return `${context.dataset.label}: R$ ${context.parsed.y.toLocaleString('pt-BR')}`;
-                            }
-                        }
-                    },
-                    legend: {
-                        display: true,
-                        position: 'bottom'
-                    }
-                }
-            }
-        });
-    }
-    // Beneficiários por projeto (gráfico de rosca)
-    const beneficiariosCanvas = document.getElementById('beneficiariosChart');
-    if (beneficiariosCanvas) {
-        const ctx2 = beneficiariosCanvas.getContext('2d');
-        if (charts.beneficiarios) {
-            charts.beneficiarios.destroy();
-        }
-        charts.beneficiarios = new Chart(ctx2, {
-            type: 'doughnut',
-            data: {
-                labels: appState.projetos.map(p => p.nome),
-                datasets: [
-                    {
-                        data: appState.projetos.map(p => p.beneficiarios_atual || 0),
-                        backgroundColor: ['#1FB8CD', '#FFC185', '#B4413C', '#ECEBD5', '#5D878F', '#DB4545']
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        position: 'bottom'
-                    }
-                }
-            }
-        });
-    }
+/* Import/Export */
+function exportCsv(){
+  const rows = [
+    ['id','nome','tipo_parceria','status','orcamento_total','orcamento_executado','beneficiarios_meta','beneficiarios_atual','inicio','fim','progresso'],
+    ...appState.projetos.map(p=>[p.id,p.nome,p.tipo_parceria,p.status,p.orcamento_total,p.orcamento_executado,p.beneficiarios_meta,p.beneficiarios_atual,p.inicio,p.fim,p.progresso])
+  ];
+  const csv = rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'projetos.csv';
+  a.click();
+  URL.revokeObjectURL(a.href);
 }
 
-/**
- * Renderiza a lista de próximas atividades.
- */
-function renderProximasAtividades() {
-    const container = document.getElementById('proximas-atividades');
-    if (!container) return;
-    container.innerHTML = '';
-    // Ordena atividades por data
-    const sorted = [...appState.atividades].sort((a, b) => new Date(a.data) - new Date(b.data));
-    sorted.forEach(atividade => {
-        const item = document.createElement('div');
-        item.className = 'activity-item';
-        item.innerHTML = `
-            <div class="activity-info">
-                <div class="activity-name">${atividade.nome}</div>
-                <div class="activity-type">${getTipoAtividadeLabel(atividade.tipo)}</div>
-            </div>
-            <div class="activity-date">${formatDate(atividade.data)}</div>
-        `;
-        container.appendChild(item);
-    });
+function importJson(e){
+  const file = e.target.files[0]; if(!file) return;
+  const fr = new FileReader();
+  fr.onload = () => {
+    try{
+      const data = JSON.parse(fr.result);
+      if (data && data.projetos) appState.projetos = data.projetos;
+      if (data && data.beneficiarios) appState.beneficiarios = data.beneficiarios;
+      if (data && data.parcerias) appState.parcerias = data.parcerias;
+      saveState();
+      renderProjects(); renderBeneficiarios(); renderParceriasList(); updateDashboard(); fillBeneficiarioProjetoSelects();
+      toast('Dados importados.');
+    }catch(err){ alert('JSON inválido.'); }
+  };
+  fr.readAsText(file);
 }
 
-/**
- * Renderiza o grid de projetos, permitindo visualizar métricas básicas.
- */
-function renderProjectsGrid() {
-    const grid = document.getElementById('projectsGrid');
-    if (!grid) return;
-    grid.innerHTML = '';
-    appState.projetos.forEach(projeto => {
-        const projectCard = document.createElement('div');
-        projectCard.className = 'project-card';
-        const statusClass = (projeto.status || '').toLowerCase().replace(/\s+/g, '-');
-        projectCard.innerHTML = `
-            <div class="project-header">
-                <h3 class="project-title">${projeto.nome}</h3>
-                <span class="project-status ${statusClass}">${projeto.status}</span>
-            </div>
-            <div class="project-meta">
-                <div class="project-metric">
-                    <span class="project-metric-value">${formatCurrency(projeto.orcamento_executado)}</span>
-                    <div class="project-metric-label">de ${formatCurrency(projeto.orcamento_total)}</div>
-                </div>
-                <div class="project-metric">
-                    <span class="project-metric-value">${projeto.beneficiarios_atual}</span>
-                    <div class="project-metric-label">de ${projeto.beneficiarios_meta} beneficiários</div>
-                </div>
-            </div>
-            <div class="progress-bar">
-                <div class="progress-bar-fill" style="width: ${projeto.progresso}%"></div>
-            </div>
-            <div class="project-actions">
-                <button class="btn btn--outline btn--sm" onclick="editProject(${projeto.id})">
-                    <i class="fas fa-edit"></i> Editar
-                </button>
-                <button class="btn btn--primary btn--sm" onclick="viewProject(${projeto.id})">
-                    <i class="fas fa-eye"></i> Visualizar
-                </button>
-            </div>
-        `;
-        grid.appendChild(projectCard);
-    });
-}
-
-/**
- * Renderiza a lista de parcerias utilizando os dados em appState.parcerias.
- */
-function renderParceriasList() {
-    const list = document.getElementById('parceriasList');
-    if (!list) return;
-    list.innerHTML = '';
-    appState.parcerias.forEach(parceria => {
-        const item = document.createElement('div');
-        item.className = 'parceria-item';
-        const tipoLabel = sistemaDados.tiposParceria.find(t => t.id === parceria.tipo)?.nome || parceria.tipo;
-        item.innerHTML = `
-            <div>
-                <h4>${parceria.orgao}</h4>
-                <p><strong>Tipo:</strong> ${tipoLabel}</p>
-                <p><strong>Objeto:</strong> ${parceria.objeto}</p>
-            </div>
-            <div>
-                <span class="status status--success">${parceria.status}</span>
-            </div>
-        `;
-        list.appendChild(item);
-    });
-}
-
-/**
- * Renderiza o gráfico de orçamento por categoria e a tabela detalhada.
- */
-function renderBudgetData() {
-    const budgetCanvas = document.getElementById('budgetChart');
-    if (budgetCanvas) {
-        const ctx = budgetCanvas.getContext('2d');
-        if (charts.budget) charts.budget.destroy();
-        charts.budget = new Chart(ctx, {
-            type: 'pie',
-            data: {
-                labels: sistemaDados.categorias.map(c => c.nome),
-                datasets: [
-                    {
-                        data: sistemaDados.categorias.map(c => c.orcado),
-                        backgroundColor: ['#1FB8CD', '#FFC185', '#B4413C', '#ECEBD5', '#5D878F', '#DB4545']
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        position: 'right'
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: context => {
-                                const label = context.label;
-                                const value = context.parsed;
-                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                                const percentage = ((value / total) * 100).toFixed(1);
-                                return `${label}: R$ ${value.toLocaleString('pt-BR')} (${percentage}%)`;
-                            }
-                        }
-                    }
-                }
-            }
-        });
-    }
-    // Tabela com detalhamento por categoria
-    const tbody = document.getElementById('budgetTableBody');
-    if (!tbody) return;
-    tbody.innerHTML = '';
-    sistemaDados.categorias.forEach(categoria => {
-        const row = document.createElement('tr');
-        const percentExecutado = ((categoria.executado / categoria.orcado) * 100).toFixed(1);
-        let statusClass = 'status--success';
-        let statusText = 'No prazo';
-        if (percentExecutado < 50) {
-            statusClass = 'status--warning';
-            statusText = 'Atenção';
-        } else if (percentExecutado > 90) {
-            statusClass = 'status--error';
-            statusText = 'Limite';
-        }
-        row.innerHTML = `
-            <td>${categoria.nome}</td>
-            <td>${formatCurrency(categoria.orcado)}</td>
-            <td>${formatCurrency(categoria.executado)}</td>
-            <td>${percentExecutado}%</td>
-            <td><span class="status ${statusClass}">${statusText}</span></td>
-        `;
-        tbody.appendChild(row);
-    });
-}
-
-/**
- * Renderiza as estatísticas e a tabela de beneficiários.
- */
-function renderBeneficiarios() {
-    // Atualiza estatísticas de beneficiários
-    const totalBeneficiariosEl = document.getElementById('totalBeneficiarios');
-    if (totalBeneficiariosEl) totalBeneficiariosEl.textContent = appState.beneficiarios.length;
-    const atendimentosMesEl = document.getElementById('atendimentosMes');
-    if (atendimentosMesEl) atendimentosMesEl.textContent = '47';
-    const novosBeneficiariosEl = document.getElementById('novosBeneficiarios');
-    if (novosBeneficiariosEl) novosBeneficiariosEl.textContent = '12';
-    // Preenche a tabela com os beneficiários
-    const tbody = document.getElementById('beneficiariosTableBody');
-    if (!tbody) return;
-    tbody.innerHTML = '';
-    appState.beneficiarios.forEach(beneficiario => {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td>${beneficiario.nome}</td>
-            <td>${beneficiario.cpf}</td>
-            <td>${beneficiario.projeto}</td>
-            <td>${formatDate(beneficiario.cadastro)}</td>
-            <td>
-                <button class="btn btn--outline btn--sm" onclick="editBeneficiario(${beneficiario.id})">
-                    <i class="fas fa-edit"></i> Editar
-                </button>
-            </td>
-        `;
-        tbody.appendChild(row);
-    });
-}
-
-/**
- * Renderiza os cartões de indicadores de desempenho.
- */
-function renderIndicators() {
-    const grid = document.getElementById('indicatorsGrid');
-    if (!grid) return;
-    grid.innerHTML = '';
-    appState.indicadores.forEach(indicador => {
-        const progress = ((indicador.atual / indicador.meta) * 100).toFixed(1);
-        const card = document.createElement('div');
-        card.className = 'indicator-card';
-        card.innerHTML = `
-            <div class="indicator-header">
-                <h4 class="indicator-name">${indicador.nome}</h4>
-                <span class="indicator-unit">${indicador.unidade}</span>
-            </div>
-            <div class="indicator-values">
-                <span class="indicator-current">${indicador.atual}</span>
-                <span class="indicator-target">Meta: ${indicador.meta}</span>
-            </div>
-            <div class="progress-bar">
-                <div class="progress-bar-fill" style="width: ${progress}%"></div>
-            </div>
-            <div class="indicator-progress">
-                <small>Progresso: ${progress}%</small>
-            </div>
-        `;
-        grid.appendChild(card);
-    });
-}
-
-/**
- * Renderiza a linha do tempo de relatórios de prestação de contas.
- */
-function renderReportsTimeline() {
-    const timeline = document.getElementById('reportsTimeline');
-    if (!timeline) return;
-    timeline.innerHTML = '';
-    // Ordena relatórios por data
-    const sorted = [...appState.reports].sort((a, b) => new Date(a.data) - new Date(b.data));
-    sorted.forEach(report => {
-        const item = document.createElement('div');
-        item.className = 'timeline-item';
-        item.innerHTML = `
-            <div class="timeline-date">${formatDate(report.data)}</div>
-            <div class="timeline-content">
-                <h5 class="timeline-title">${report.titulo}</h5>
-                <p class="timeline-description">${report.descricao}</p>
-            </div>
-            <button class="btn btn--primary btn--sm">
-                <i class="fas fa-download"></i> Baixar
-            </button>
-        `;
-        timeline.appendChild(item);
-    });
-}
-
-/**
- * Exibe um modal e realiza preenchimentos necessários (ex. lista de projetos).
- * @param {string} modalId ID do modal a ser exibido.
- */
-function showModal(modalId) {
-    const modal = document.getElementById(modalId);
-    if (!modal) return;
-    modal.classList.remove('hidden');
-    // Para o modal de beneficiário, preencher o select com projetos
-    if (modalId === 'novoBeneficiarioModal') {
-        const select = modal.querySelector('select');
-        if (select) {
-            select.innerHTML = '<option value="">Selecione um projeto</option>';
-            appState.projetos.forEach(projeto => {
-                const opt = document.createElement('option');
-                opt.value = projeto.id;
-                opt.textContent = projeto.nome;
-                select.appendChild(opt);
-            });
-        }
-    }
-}
-
-/**
- * Oculta um modal específico.
- * @param {string} modalId ID do modal a ser ocultado.
- */
-function hideModal(modalId) {
-    const modal = document.getElementById(modalId);
-    if (modal) modal.classList.add('hidden');
-}
-
-/**
- * Manipula o envio do formulário de novo projeto. Cria um novo projeto
- * com base nos dados inseridos e atualiza o dashboard e a lista de projetos.
- */
-function handleNewProject(e) {
-    e.preventDefault();
-    const form = e.target;
-    const nome = form.querySelector('input[type="text"]').value.trim();
-    const tipo = form.querySelector('select').value;
-    const numberInputs = form.querySelectorAll('input[type="number"]');
-    const orcamento = numberInputs[0] ? Number(numberInputs[0].value) : 0;
-    const metaBeneficiarios = numberInputs[1] ? Number(numberInputs[1].value) : 0;
-    if (!nome || !tipo || !orcamento || !metaBeneficiarios) {
-        alert('Preencha todos os campos para criar um projeto.');
-        return;
-    }
-    const newProject = {
-        id: Date.now(),
-        nome,
-        tipo_parceria: tipo,
-        status: 'Planejamento',
-        orcamento_total: orcamento,
-        orcamento_executado: 0,
-        beneficiarios_meta: metaBeneficiarios,
-        beneficiarios_atual: 0,
-        inicio: new Date().toISOString().split('T')[0],
-        fim: '',
-        progresso: 0
-    };
-    appState.projetos.push(newProject);
-    hideModal('novoProjetoModal');
-    // Limpa o formulário
-    form.reset();
-    renderProjectsGrid();
-    updateDashboard();
-}
-
-/**
- * Manipula o envio do formulário de nova parceria. Adiciona a parceria ao estado.
- */
-function handleNewParceria(e) {
-    e.preventDefault();
-    const form = e.target;
-    const inputs = form.querySelectorAll('input[type="text"]');
-    const orgao = inputs[0] ? inputs[0].value.trim() : '';
-    const tipo = form.querySelector('select') ? form.querySelector('select').value : '';
-    const objeto = form.querySelector('textarea') ? form.querySelector('textarea').value.trim() : '';
-    if (!orgao || !tipo || !objeto) {
-        alert('Preencha todos os campos para criar uma parceria.');
-        return;
-    }
-    const newParceria = {
-        id: Date.now(),
-        orgao,
-        tipo,
-        objeto,
-        status: 'Em análise'
-    };
-    appState.parcerias.push(newParceria);
-    hideModal('novaParceriaModal');
-    form.reset();
-    renderParceriasList();
-}
-
-/**
- * Manipula o envio do formulário de novo beneficiário. Adiciona o beneficiário
- * ao estado e atualiza o número de beneficiários do projeto correspondente.
- */
-function handleNewBeneficiario(e) {
-    e.preventDefault();
-    const form = e.target;
-    const inputs = form.querySelectorAll('input[type="text"]');
-    const nome = inputs[0] ? inputs[0].value.trim() : '';
-    const cpf = inputs[1] ? inputs[1].value.trim() : '';
-    const projetoId = form.querySelector('select') ? form.querySelector('select').value : '';
-    if (!nome || !cpf || !projetoId) {
-        alert('Preencha todos os campos para cadastrar o beneficiário.');
-        return;
-    }
-    const projeto = appState.projetos.find(p => p.id == projetoId);
-    const newBenef = {
-        id: Date.now(),
-        nome,
-        cpf,
-        projeto: projeto ? projeto.nome : '',
-        cadastro: new Date().toISOString().split('T')[0]
-    };
-    appState.beneficiarios.push(newBenef);
-    // Atualiza contagem de beneficiários no projeto
-    if (projeto) {
-        projeto.beneficiarios_atual = (projeto.beneficiarios_atual || 0) + 1;
-        // Atualiza progresso do projeto (exemplo simples: percentual de beneficiários atendidos)
-        if (projeto.beneficiarios_meta > 0) {
-            const novoProgresso = Math.min(100, Math.round((projeto.beneficiarios_atual / projeto.beneficiarios_meta) * 100));
-            projeto.progresso = novoProgresso;
-        }
-    }
-    hideModal('novoBeneficiarioModal');
-    form.reset();
-    renderBeneficiarios();
-    renderProjectsGrid();
-    updateDashboard();
-}
-
-/**
- * Formata um número como moeda brasileira.
- * @param {number} value Valor a ser formatado.
- */
-function formatCurrency(value) {
-    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value || 0);
-}
-
-/**
- * Formata uma string de data no formato AAAA-MM-DD para DD/MM/AAAA.
- * @param {string} dateString Data no formato ISO.
- */
-function formatDate(dateString) {
-    return new Date(dateString).toLocaleDateString('pt-BR');
-}
-
-/**
- * Retorna um label legível para o tipo de atividade.
- * @param {string} tipo Tipo de atividade (prestacao_contas, monitoramento, capacitacao).
- */
-function getTipoAtividadeLabel(tipo) {
-    const labels = {
-        prestacao_contas: 'Prestação de Contas',
-        monitoramento: 'Monitoramento',
-        capacitacao: 'Capacitação'
-    };
-    return labels[tipo] || tipo;
-}
-
-/**
- * Ações de edição e visualização de projetos e beneficiários.
- * Para fins de demonstração, exibem apenas alertas simples.
- */
-function editProject(id) {
-    // Abre o modal de edição com os dados preenchidos
-    openEditProject(id);
-}
-function viewProject(id) {
-    const projeto = appState.projetos.find(p => p.id === id);
-    if (projeto) {
-        alert(`Detalhes do projeto:\n${projeto.nome}\nTipo de parceria: ${projeto.tipo_parceria}\nBeneficiários atendidos: ${projeto.beneficiarios_atual}/${projeto.beneficiarios_meta}`);
-    }
-}
-function editBeneficiario(id) {
-    // Abre o modal de edição com os dados do beneficiário
-    openEditBeneficiario(id);
-}
-
-/**
- * Mostra notificações de exemplo na interface.
- */
-function showNotifications() {
-    alert('3 notificações:\n- Prestação de contas em 5 dias\n- Nova capacitação disponível\n- Reunião de monitoramento amanhã');
-}
-
-/**
- * Mostra configurações do sistema (placeholder).
- */
-function showSettings() {
-    alert('Configurações do sistema');
-}
-
-/**
- * Gera um relatório fictício de prestação de contas.
- */
-function generateReport() {
-    alert('Relatório gerado com sucesso! O download iniciará em breve.');
-}
-
-/**
- * Abre o modal de edição de projeto e pré-preenche os campos com os dados
- * do projeto selecionado. O identificador é salvo no dataset do formulário.
- * @param {number|string} id Identificador do projeto a ser editado
- */
-function openEditProject(id) {
-    const projeto = appState.projetos.find(p => p.id == id);
-    if (!projeto) return;
-    const form = document.getElementById('editProjetoForm');
-    if (!form) return;
-    // Armazena o ID em edição para uso no submit
-    form.dataset.id = id;
-    // Preenche campos
-    form.elements['nome'].value = projeto.nome;
-    form.elements['tipo'].value = projeto.tipo_parceria;
-    form.elements['status'].value = projeto.status;
-    form.elements['orcamento_total'].value = projeto.orcamento_total;
-    form.elements['orcamento_executado'].value = projeto.orcamento_executado;
-    form.elements['beneficiarios_meta'].value = projeto.beneficiarios_meta;
-    form.elements['beneficiarios_atual'].value = projeto.beneficiarios_atual || 0;
-    showModal('editProjetoModal');
-}
-
-/**
- * Trata o envio do formulário de edição de projeto, atualizando os dados
- * do projeto no estado global e recalculando o progresso com base nas
- * métricas de orçamento e beneficiários.
- * @param {Event} e Evento de submit
- */
-function handleEditProjeto(e) {
-    e.preventDefault();
-    const form = e.target;
-    const id = form.dataset.id;
-    const projeto = appState.projetos.find(p => p.id == id);
-    if (!projeto) return;
-    // Atualiza valores do projeto com base no formulário
-    projeto.nome = form.elements['nome'].value.trim();
-    projeto.tipo_parceria = form.elements['tipo'].value;
-    projeto.status = form.elements['status'].value;
-    projeto.orcamento_total = Number(form.elements['orcamento_total'].value) || 0;
-    projeto.orcamento_executado = Number(form.elements['orcamento_executado'].value) || 0;
-    projeto.beneficiarios_meta = Number(form.elements['beneficiarios_meta'].value) || 0;
-    projeto.beneficiarios_atual = Number(form.elements['beneficiarios_atual'].value) || 0;
-    // Recalcula progresso como média simples entre execução orçamentária e atendimento de beneficiários
-    const benefRatio = projeto.beneficiarios_meta > 0 ? projeto.beneficiarios_atual / projeto.beneficiarios_meta : 0;
-    const budgetRatio = projeto.orcamento_total > 0 ? projeto.orcamento_executado / projeto.orcamento_total : 0;
-    projeto.progresso = Math.min(100, Math.round((benefRatio + budgetRatio) * 50));
-    // Fecha modal e atualiza telas
-    hideModal('editProjetoModal');
-    form.reset();
-    renderProjectsGrid();
-    updateDashboard();
-}
-
-/**
- * Abre o modal de edição de beneficiário, preenchendo dados atuais e
- * listando os projetos disponíveis. O ID do beneficiário fica salvo
- * no dataset do formulário.
- * @param {number|string} id Identificador do beneficiário
- */
-function openEditBeneficiario(id) {
-    const benef = appState.beneficiarios.find(b => b.id == id);
-    if (!benef) return;
-    const form = document.getElementById('editBeneficiarioForm');
-    if (!form) return;
-    form.dataset.id = id;
-    // Preenche campos básicos
-    form.elements['nome'].value = benef.nome;
-    form.elements['cpf'].value = benef.cpf;
-    // Preenche lista de projetos
-    const select = form.elements['projeto'];
-    select.innerHTML = '';
-    appState.projetos.forEach(p => {
-        const opt = document.createElement('option');
-        opt.value = p.id;
-        opt.textContent = p.nome;
-        select.appendChild(opt);
-    });
-    // Seleciona projeto atual
-    const currentProject = appState.projetos.find(p => p.nome === benef.projeto);
-    if (currentProject) {
-        select.value = currentProject.id;
-    }
-    showModal('editBeneficiarioModal');
-}
-
-/**
- * Trata o envio do formulário de edição de beneficiário. Atualiza o
- * registro do beneficiário e, se o projeto for alterado, ajusta as
- * contagens de beneficiários de cada projeto, recalculando seus
- * progressos.
- * @param {Event} e Evento de submit
- */
-function handleEditBeneficiario(e) {
-    e.preventDefault();
-    const form = e.target;
-    const id = form.dataset.id;
-    const benef = appState.beneficiarios.find(b => b.id == id);
-    if (!benef) return;
-    const oldProjectName = benef.projeto;
-    // Atualiza campos
-    benef.nome = form.elements['nome'].value.trim();
-    benef.cpf = form.elements['cpf'].value.trim();
-    const newProjectId = form.elements['projeto'].value;
-    const newProject = appState.projetos.find(p => p.id == newProjectId);
-    if (newProject) {
-        benef.projeto = newProject.nome;
-    }
-    // Ajusta contagens de beneficiários se o projeto mudou
-    if (oldProjectName !== benef.projeto) {
-        const oldProj = appState.projetos.find(p => p.nome === oldProjectName);
-        if (oldProj) {
-            oldProj.beneficiarios_atual = Math.max(0, (oldProj.beneficiarios_atual || 0) - 1);
-            const benefRatioOld = oldProj.beneficiarios_meta > 0 ? oldProj.beneficiarios_atual / oldProj.beneficiarios_meta : 0;
-            const budgetRatioOld = oldProj.orcamento_total > 0 ? oldProj.orcamento_executado / oldProj.orcamento_total : 0;
-            oldProj.progresso = Math.min(100, Math.round((benefRatioOld + budgetRatioOld) * 50));
-        }
-        if (newProject) {
-            newProject.beneficiarios_atual = (newProject.beneficiarios_atual || 0) + 1;
-            const benefRatioNew = newProject.beneficiarios_meta > 0 ? newProject.beneficiarios_atual / newProject.beneficiarios_meta : 0;
-            const budgetRatioNew = newProject.orcamento_total > 0 ? newProject.orcamento_executado / newProject.orcamento_total : 0;
-            newProject.progresso = Math.min(100, Math.round((benefRatioNew + budgetRatioNew) * 50));
-        }
-    }
-    hideModal('editBeneficiarioModal');
-    form.reset();
-    renderBeneficiarios();
-    renderProjectsGrid();
-    updateDashboard();
+/* Utils */
+function toast(msg){
+  const t = byId('toast'); t.textContent = msg; t.classList.add('is-visible');
+  setTimeout(()=> t.classList.remove('is-visible'), 1800);
 }
